@@ -11,6 +11,8 @@ public class Git {
 	private int set_number;
 	private int pointsNumber = 52;
 	private double tMax = 1616;
+	private double total_path_distance;
+	private int total_path_profit;	
 //	private double distanceTraveled;
 //	private int totalProfit;
 	private int[] set_profit;
@@ -23,11 +25,13 @@ public class Git {
 	List<Integer> randomSet;
 	List<Integer> randomPath = new ArrayList<Integer>();
 	List<Integer> firstPath = new ArrayList<Integer>();
+	List<Integer> solution = new ArrayList<Integer>();
 
 
 	public static void main(String[] args) {
 		Git test = new Git();
 		test.run_one_time();
+		test.run_local_search_algorithm();
 	}
 
 	public void run_one_time() {
@@ -36,7 +40,15 @@ public class Git {
 		prepare_data();
 		generateRandomPath();
 		create_initial_solution();
-	}
+		}
+	
+	public void run_local_search_algorithm() {
+		solution.addAll(localSearch(firstPath));
+		total_path_distance=caluculate_path_distance(solution);
+		System.out.println("total_solution_distance_: "+total_path_distance);
+		total_path_profit=caluculate_path_profit(solution);
+		System.out.println("total_solution_profit_: "+total_path_profit);
+		}
 
 	public void read_data() {
 		read_txt_file();
@@ -220,8 +232,10 @@ public class Git {
 			local_distance = local_distance + m_Distance[long_path.get(i)][long_path.get(i + 1)];
 			i++;
 		}
-		caluculate_path_distance(short_path);
-		caluculate_path_profit(short_path);
+		total_path_distance=caluculate_path_distance(short_path);
+		total_path_profit=caluculate_path_profit(short_path);
+		System.out.println("total_first_path_distance: "+total_path_distance);
+		System.out.println("total_first_path_profit: "+total_path_profit);
 		System.out.println(short_path);
 	}
 
@@ -231,7 +245,7 @@ public class Git {
 		for (int i = 0; i < path.size() - 1; i++) {
 			distance_path = distance_path + m_Distance[path.get(i)][path.get(i + 1)];
 		}
-		System.out.println("The new distance is " + distance_path);
+		//System.out.println("The new distance is " + distance_path);
 		return distance_path;
 	}
 	
@@ -240,11 +254,103 @@ public class Git {
 		for (int i = 0; i < path.size() ; i++) {
 			profit_path = profit_path + points_profit[path.get(i)] ;
 		}
-		System.out.println("The new profit is " + profit_path);
+		//System.out.println("The new profit is " + profit_path);
 		return profit_path;
 	}
 
 // next step is the local search
+
+
+	
+	public List<Integer> localSearch(List<Integer> startSolution) {
+
+		List<Integer> solution = new ArrayList<Integer>(startSolution);
+		double delta = 0;
+		do {
+			delta = move(solution);
+		} while (delta < 0);
+		System.out.println(solution);
+		return solution;
+	}
+	
+	public double move(List<Integer> solution) {
+		boolean valid;
+		double delta;
+
+		for (int i = 1; i < solution.size() - 2; i++) {
+			for (int j = i + 1; j < solution.size() - 1; j++) {
+				delta = delta(solution, i, j);
+//				System.out.println("we test between  " + solution.get(i) + " and " + solution.get(j));
+//				System.out.println("delta is " + delta);
+				if (delta < 0) {
+					swapElements(solution, j, i);
+//					System.out.println(solution);
+					valid = valid_insert(solution.size() - 1, randomPath, solution);
+//					System.out.println("Validity is " + valid);
+					return delta;
+				}
+
+			}
+		}
+		return 0;
+	}
+	public double delta(List<Integer> path, int pI, int pJ) {
+		double scoreOne = 0;
+		double scoreTwo = 0;
+		int i = pI;
+		int j = pJ;
+		double delta = 0;
+		if ((j - i) == 1) {
+			scoreOne = m_Distance[path.get(i - 1)][path.get(i)] + m_Distance[path.get(i)][path.get(j)]
+					+ m_Distance[path.get(j)][path.get(j + 1)];
+			scoreTwo = m_Distance[path.get(i - 1)][path.get(j)] + m_Distance[path.get(j)][path.get(i)]
+					+ m_Distance[path.get(i)][path.get(j + 1)];
+//			if (m_Distance[path.get(i - 1)][path.get(j)] > granularity
+//					|| m_Distance[path.get(j)][path.get(i)] > granularity
+//					|| m_Distance[path.get(i)][path.get(j + 1)] > granularity) {
+//				scoreTwo = scoreOne + 1;
+//			}
+
+		} else {
+
+			scoreOne = m_Distance[path.get(i - 1)][path.get(i)] + m_Distance[path.get(i)][path.get(i + 1)]
+					+ m_Distance[path.get(j - 1)][path.get(j)] + m_Distance[path.get(j)][path.get(j + 1)];
+
+			scoreTwo = m_Distance[path.get(i - 1)][path.get(j)] + m_Distance[path.get(j)][path.get(i + 1)]
+					+ m_Distance[path.get(j - 1)][path.get(i)] + m_Distance[path.get(i)][path.get(j + 1)];
+
+//			if (m_Distance[path.get(i - 1)][path.get(j)] > granularity
+//					|| m_Distance[path.get(j)][path.get(i + 1)] > granularity
+//					|| m_Distance[path.get(j - 1)][path.get(i)] > granularity
+//					|| m_Distance[path.get(i)][path.get(j + 1)] > granularity) {
+//				scoreTwo = scoreOne + 1;
+//			}
+
+		}
+		delta = scoreTwo - scoreOne;
+
+		return delta;
+	}
+
+	protected void swapElements(List<Integer> path, int j, int i) {
+		int temp = path.get(j);
+		path.set(j, path.get(i));
+		path.set(i, temp);
+	}
+
+	private boolean valid_insert(int last_index, List<Integer> long_path, List<Integer> short_path) {
+		boolean output = false;
+		double input_distance = caluculate_path_distance(short_path);
+
+		double size_next_edge = m_Distance[long_path.get(last_index)][long_path.get(last_index + 1)];
+
+		if (size_next_edge <= tMax - input_distance) {
+			output = true;
+			short_path.add(long_path.get(last_index + 1));
+		}
+		// This function return boolean value just for verification
+		return output;
+	}
 
 
 }
