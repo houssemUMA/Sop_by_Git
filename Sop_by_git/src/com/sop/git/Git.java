@@ -12,7 +12,15 @@ public class Git {
 	private int pointsNumber = 52;
 	private double tMax = 1616;
 	private double total_path_distance;
-	private int total_path_profit;	
+	private int total_path_profit;
+	//B is a parameter that adjusts the size of the granular neighborhood
+	private double parameter_B=1;
+	// m is the number of clusters used in the first solution
+	private int m = 0;
+	// z_prime is the first path distance
+	private double z_prime=0;
+	// v is the granularity 
+	private double v =0;
 //	private double distanceTraveled;
 //	private int totalProfit;
 	private int[] set_profit;
@@ -31,16 +39,44 @@ public class Git {
 	public static void main(String[] args) {
 		Git test = new Git();
 		test.run_one_time();
-		test.run_local_search_algorithm();
+		test.iterated();
 	}
+	
+	public void iterated() {
+
+		float sec;
+		long start = System.currentTimeMillis();
+
+		do {
+			System.out.println("******************************");
+			initial_solution_steps();
+			run_local_search_algorithm();
+			randomSet.clear();
+			randomPath.clear();
+			firstPath.clear();
+			solution.clear();
+			
+			System.out.println();
+			long end = System.currentTimeMillis();
+			sec = (end - start) / 1000F;
+		} while (sec < 0.1);
+		
+		
+	}
+
 
 	public void run_one_time() {
 		read_data();
 		fillDistanceMatrix();
 		prepare_data();
+		
+		}
+	
+	public void initial_solution_steps() {
 		generateRandomPath();
 		create_initial_solution();
-		}
+		calculate_granularity();
+	}
 	
 	public void run_local_search_algorithm() {
 		solution.addAll(localSearch(firstPath));
@@ -88,7 +124,10 @@ public class Git {
 		for (int i = 0; i < pointsNumber; i++) {
 			for (int j = 0; j < pointsNumber; j++) {
 				m_Distance[i][j] = calculateDistanceBetweenPoints(i, j);
+				
 			}
+			
+			
 		}
 	}
 
@@ -229,14 +268,21 @@ public class Git {
 		while (local_distance < tMax) {
 
 			short_path.add(long_path.get(i));
-			local_distance = local_distance + m_Distance[long_path.get(i)][long_path.get(i + 1)];
-			i++;
+			System.out.println("long_path.get("+i+")"+long_path.get(i));
+			if (i<set_number-1) {
+				local_distance = local_distance + m_Distance[long_path.get(i)][long_path.get(i + 1)];
+				i++;
+			}
+			System.out.println("local_distance"+local_distance);
+			
 		}
 		total_path_distance=caluculate_path_distance(short_path);
 		total_path_profit=caluculate_path_profit(short_path);
 		System.out.println("total_first_path_distance: "+total_path_distance);
 		System.out.println("total_first_path_profit: "+total_path_profit);
-		System.out.println(short_path);
+		System.out.println("The short path is : "+short_path);
+		z_prime=total_path_distance;
+		m=short_path.size()-1;
 	}
 
 	
@@ -340,17 +386,24 @@ public class Git {
 
 	private boolean valid_insert(int last_index, List<Integer> long_path, List<Integer> short_path) {
 		boolean output = false;
+		double size_next_edge;
 		double input_distance = caluculate_path_distance(short_path);
-
-		double size_next_edge = m_Distance[long_path.get(last_index)][long_path.get(last_index + 1)];
-
-		if (size_next_edge <= tMax - input_distance) {
-			output = true;
-			short_path.add(long_path.get(last_index + 1));
+		if (last_index < set_number - 1) {
+			size_next_edge = m_Distance[long_path.get(last_index)][long_path.get(last_index + 1)];
+			if (size_next_edge <= tMax - input_distance) {
+				output = true;
+				short_path.add(long_path.get(last_index + 1));
+			}
 		}
+
+
 		// This function return boolean value just for verification
 		return output;
 	}
 
+private void calculate_granularity() {
+	v=parameter_B*(z_prime/(set_number+m));
+	System.out.println("Granularity is "+ v);
+}
 
 }
