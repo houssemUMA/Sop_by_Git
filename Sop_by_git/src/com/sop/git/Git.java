@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.Scanner;
 
 public class Git {
@@ -14,13 +15,17 @@ public class Git {
 	private double total_path_distance;
 	private int total_path_profit;
 	//B is a parameter that adjusts the size of the granular neighborhood
-	private double parameter_B=1;
+	private double parameter_B=20;
 	// m is the number of clusters used in the first solution
 	private int m = 0;
 	// z_prime is the first path distance
 	private double z_prime=0;
 	// v is the granularity 
 	private double v =0;
+	// we save best score here
+	private double best_score_solution=0.0;
+	// we save here all clusters used in the solution
+	private int clusters_used;
 //	private double distanceTraveled;
 //	private int totalProfit;
 	private int[] set_profit;
@@ -34,11 +39,15 @@ public class Git {
 	List<Integer> randomPath = new ArrayList<Integer>();
 	List<Integer> firstPath = new ArrayList<Integer>();
 	List<Integer> solution = new ArrayList<Integer>();
+// we save here the best solution
+	List<Integer> best_solution = new ArrayList<Integer>();
+
 
 
 	public static void main(String[] args) {
 		Git test = new Git();
 		test.run_one_time();
+		test.generateRandomPath();
 		test.iterated();
 	}
 	
@@ -51,10 +60,7 @@ public class Git {
 			System.out.println("******************************");
 			initial_solution_steps();
 			run_local_search_algorithm();
-			randomSet.clear();
-			randomPath.clear();
-			firstPath.clear();
-			solution.clear();
+			clear_functions();
 			
 			System.out.println();
 			long end = System.currentTimeMillis();
@@ -64,6 +70,12 @@ public class Git {
 		
 	}
 
+	public void clear_functions() {
+//		randomSet.clear();
+		randomPath.clear();
+		firstPath.clear();
+		solution.clear();
+	}
 
 	public void run_one_time() {
 		read_data();
@@ -73,7 +85,7 @@ public class Git {
 		}
 	
 	public void initial_solution_steps() {
-		generateRandomPath();
+		
 		create_initial_solution();
 		calculate_granularity();
 	}
@@ -84,6 +96,11 @@ public class Git {
 		System.out.println("total_solution_distance_: "+total_path_distance);
 		total_path_profit=caluculate_path_profit(solution);
 		System.out.println("total_solution_profit_: "+total_path_profit);
+		escape(return_clusters_path_for_escape(solution));
+		compare_results( solution);
+		System.out.println(" best_score "+best_score_solution);
+		System.out.println(" best_solution:  "+best_solution);
+		
 		}
 
 	public void read_data() {
@@ -268,12 +285,12 @@ public class Git {
 		while (local_distance < tMax) {
 
 			short_path.add(long_path.get(i));
-			System.out.println("long_path.get("+i+")"+long_path.get(i));
+//			System.out.println("long_path.get("+i+")"+long_path.get(i));
 			if (i<set_number-1) {
 				local_distance = local_distance + m_Distance[long_path.get(i)][long_path.get(i + 1)];
 				i++;
 			}
-			System.out.println("local_distance"+local_distance);
+//			System.out.println("local_distance"+local_distance);
 			
 		}
 		total_path_distance=caluculate_path_distance(short_path);
@@ -351,11 +368,11 @@ public class Git {
 					+ m_Distance[path.get(j)][path.get(j + 1)];
 			scoreTwo = m_Distance[path.get(i - 1)][path.get(j)] + m_Distance[path.get(j)][path.get(i)]
 					+ m_Distance[path.get(i)][path.get(j + 1)];
-//			if (m_Distance[path.get(i - 1)][path.get(j)] > granularity
-//					|| m_Distance[path.get(j)][path.get(i)] > granularity
-//					|| m_Distance[path.get(i)][path.get(j + 1)] > granularity) {
-//				scoreTwo = scoreOne + 1;
-//			}
+			if (m_Distance[path.get(i - 1)][path.get(j)] > v
+					|| m_Distance[path.get(j)][path.get(i)] > v
+					|| m_Distance[path.get(i)][path.get(j + 1)] > v) {
+				scoreTwo = scoreOne + 1;
+			}
 
 		} else {
 
@@ -365,12 +382,12 @@ public class Git {
 			scoreTwo = m_Distance[path.get(i - 1)][path.get(j)] + m_Distance[path.get(j)][path.get(i + 1)]
 					+ m_Distance[path.get(j - 1)][path.get(i)] + m_Distance[path.get(i)][path.get(j + 1)];
 
-//			if (m_Distance[path.get(i - 1)][path.get(j)] > granularity
-//					|| m_Distance[path.get(j)][path.get(i + 1)] > granularity
-//					|| m_Distance[path.get(j - 1)][path.get(i)] > granularity
-//					|| m_Distance[path.get(i)][path.get(j + 1)] > granularity) {
-//				scoreTwo = scoreOne + 1;
-//			}
+			if (m_Distance[path.get(i - 1)][path.get(j)] > v
+					|| m_Distance[path.get(j)][path.get(i + 1)] > v
+					|| m_Distance[path.get(j - 1)][path.get(i)] > v
+					|| m_Distance[path.get(i)][path.get(j + 1)] > v) {
+				scoreTwo = scoreOne + 1;
+			}
 
 		}
 		delta = scoreTwo - scoreOne;
@@ -404,6 +421,75 @@ public class Git {
 private void calculate_granularity() {
 	v=parameter_B*(z_prime/(set_number+m));
 	System.out.println("Granularity is "+ v);
+}
+
+public void compare_results(List<Integer> path) {
+	double score =caluculate_path_profit(path);
+	System.out.println("the score before comparision "+ score);
+	System.out.println("the best_score before comparision "+ best_score_solution);
+	if (score > best_score_solution) {
+		best_score_solution = score;
+		verify_clear_list(best_solution);
+		best_solution.addAll(path);
+
+	}
+	path.clear();
+
+}
+
+public List<Integer> return_clusters_path_for_escape(List<Integer> path) {
+	int a;
+	List<Integer> clusters = new ArrayList<Integer>();
+	for (int i = 0; i < path.size(); i++) {
+		a = points_cluster[path.get(i)];
+		clusters.add(a);
+	}
+	clusters_used = clusters.size();
+	System.out.println("clusters_used " + clusters_used);
+	System.out.println("clusters_used are "+clusters);
+	clusters.addAll(randomSet.subList(clusters.size(), set_number));
+	System.out.println("clusters_used and not used are  "+clusters);
+	return clusters;
+}
+
+public void escape(List<Integer> list) {
+	int first_index = random_first_index(clusters_used);
+	int second_index = random_second_index(set_number, clusters_used);
+	List<Integer> removed_list = new ArrayList<Integer>();
+	removed_list.addAll(list.subList(first_index, second_index + 1));
+//	System.out.println(removed_list);
+	Collections.shuffle(removed_list);
+//	System.out.println(removed_list);
+	list.subList(first_index, second_index + 1).clear();
+	list.addAll(1, removed_list);
+//	System.out.println(list);
+	Collections.shuffle(list.subList(removed_list.size() + 1, list.size()));
+	System.out.println("The list after ecape "+list);
+	randomSet.clear();
+    randomSet.addAll(list);
+    System.out.println("randomSet after escape "+randomSet);
+}
+
+private int random_first_index(int max) {
+	int selected;
+	Random rand = new Random();
+	selected = rand.nextInt(max) + 1;
+//	System.out.println(selected);
+	return selected;
+}
+
+
+private int random_second_index(int list_size, int min) {
+	int selected;
+	Random rand = new Random();
+	if (list_size - min - 1 == 0) {
+		selected = min;
+	} else {
+		selected = rand.nextInt(list_size - min - 1) + min + 1;
+	}
+
+//	System.out.println(selected);
+	return selected;
 }
 
 }
