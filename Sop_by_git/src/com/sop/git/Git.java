@@ -65,7 +65,7 @@ public class Git {
 			System.out.println();
 			long end = System.currentTimeMillis();
 			sec = (end - start) / 1000F;
-		} while (sec < 0.1);
+		} while (sec < 1);
 		
 		
 	}
@@ -480,6 +480,9 @@ private int random_first_index(int max) {
 
 
 private int random_second_index(int list_size, int min) {
+	if (list_size== min) {
+		return min-1;
+	}
 	int selected;
 	Random rand = new Random();
 	if (list_size - min - 1 == 0) {
